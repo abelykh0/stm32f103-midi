@@ -49,7 +49,7 @@ void loop()
 uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
-	HAL_Delay(1);
+	HAL_Delay(10);
 	uint8_t result = GPIOA->IDR & 0x1F;
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
 
