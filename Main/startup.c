@@ -3,13 +3,17 @@
 #include <stdint.h>
 #include "Sound/midiMessage.h"
 
+extern ADC_HandleTypeDef hadc1;
+
 static int firstNote = 53;
 
+#define KEYPAD_ROWS 5
 static uint64_t keypadState = 0;
 static uint64_t previousKeypadState = 0;
+static volatile uint8_t adcReady;
+static volatile uint16_t adc[KEYPAD_ROWS];
 
-uint64_t
-GetKeypadState();
+uint64_t GetKeypadState();
 
 void initialize()
 {
@@ -17,6 +21,7 @@ void initialize()
 
 void setup()
 {
+	HAL_ADCEx_Calibration_Start(&hadc1);
 }
 
 void loop()
@@ -49,10 +54,34 @@ void loop()
 uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
-	//HAL_Delay(1);
-	uint8_t result = GPIOA->IDR & 0x1F;
+
+	// Using ADC because this keyboard have resistors
+	// for some reason
+	adcReady = 0;
+	HAL_ADC_Start(&hadc1);
+	HAL_ADCEx_Calibration_Start(&hadc1);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc, KEYPAD_ROWS);
+    while (!adcReady)
+    {
+    	// wait
+    }
+
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
-	//HAL_Delay(1);
+	HAL_ADC_Stop(&hadc1);
+
+	uint8_t result = 0;
+    for (int i = 0; i < KEYPAD_ROWS; i++)
+    {
+    	if (i > 0)
+    	{
+    		result <<= 1;
+    	}
+
+    	if (adc[i] > 4000)
+    	{
+    		result |= 1;
+    	}
+    }
 
 	return result;
 }
@@ -61,6 +90,8 @@ uint64_t GetKeypadState()
 {
 	uint64_t result = 0;
 	uint8_t rowState;
+
+	//HAL_Delay(1);
 
 	rowState = GetRowState(GPIOB, GPIO_PIN_11);
 	result |= rowState;
@@ -94,4 +125,15 @@ uint64_t GetKeypadState()
 	result |= rowState;
 
 	return result;
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    if(hadc->Instance == ADC1)
+    {
+        HAL_ADC_Stop_DMA(&hadc1);
+        //snprintf(trans_str, 63, "ADC %d %d\n", (uint16_t)adc[0], (uint16_t)adc[1]);
+        //HAL_UART_Transmit(&huart1, (uint8_t*)trans_str, strlen(trans_str), 1000);
+        adcReady = 1;
+    }
 }
