@@ -7,11 +7,13 @@ extern ADC_HandleTypeDef hadc1;
 
 static int firstNote = 53;
 
-#define KEYPAD_ROWS 5
+#define KEYPAD_INPUTS 5
+#define KEYPAD_OUTPUTS 8
+
 static uint64_t keypadState = 0;
 static uint64_t previousKeypadState = 0;
 static volatile uint8_t adcReady;
-static volatile uint16_t adc[KEYPAD_ROWS];
+static volatile uint16_t adc[KEYPAD_INPUTS];
 
 uint64_t GetKeypadState();
 
@@ -51,78 +53,96 @@ void loop()
 	}
 }
 
-uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
+void GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
 
 	// Using ADC because this keyboard have resistors
 	// for some reason
 	adcReady = 0;
-	HAL_ADC_Start(&hadc1);
-	HAL_ADCEx_Calibration_Start(&hadc1);
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc, KEYPAD_ROWS);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc, KEYPAD_INPUTS);
     while (!adcReady)
     {
     	// wait
     }
 
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
-	HAL_ADC_Stop(&hadc1);
-
-	uint8_t result = 0;
-    for (int i = 0; i < KEYPAD_ROWS; i++)
-    {
-    	if (i > 0)
-    	{
-    		result <<= 1;
-    	}
-
-    	if (adc[i] > 4000)
-    	{
-    		result |= 1;
-    	}
-    }
-
-	return result;
 }
 
 uint64_t GetKeypadState()
 {
 	uint64_t result = 0;
-	uint8_t rowState;
 
-	//HAL_Delay(1);
+	uint16_t adc_values[KEYPAD_OUTPUTS][KEYPAD_INPUTS];
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_11);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOB, GPIO_PIN_11);
+	memcpy(&adc_values[0], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_10);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOB, GPIO_PIN_10);
+	memcpy(&adc_values[1], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_1);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOB, GPIO_PIN_1);
+	memcpy(&adc_values[2], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_0);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOB, GPIO_PIN_0);
+	memcpy(&adc_values[3], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOC, GPIO_PIN_13);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOC, GPIO_PIN_13);
+	memcpy(&adc_values[4], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOA, GPIO_PIN_7);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOA, GPIO_PIN_7);
+	memcpy(&adc_values[5], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOA, GPIO_PIN_6);
-	result |= rowState;
-	result <<= 5;
+	GetRowState(GPIOA, GPIO_PIN_6);
+	memcpy(&adc_values[6], (const void*)adc, sizeof(adc));
 
-	rowState = GetRowState(GPIOA, GPIO_PIN_5);
-	result |= rowState;
+	GetRowState(GPIOA, GPIO_PIN_5);
+	memcpy(&adc_values[7], (const void*)adc, sizeof(adc));
+
+	int threshold = 100;
+
+	// HACK For some reason when no buttons pressed I am not getting all zeroes
+	// as I am expecting. Apparently lack of knowledge of ADC.
+	for (int j = 0; j < KEYPAD_INPUTS; j++)
+	{
+		uint16_t minValue = 0xFFFF;
+		for (int i = 0; i < KEYPAD_OUTPUTS; i++)
+		{
+			if (adc_values[i][j] < minValue)
+			{
+				minValue = adc_values[i][j];
+			}
+		}
+
+		if (minValue > threshold)
+		{
+			for (int i = 0; i < KEYPAD_OUTPUTS; i++)
+			{
+				adc_values[i][j] = 0;
+			}
+		}
+	}
+
+	for (int i = 0; i < KEYPAD_OUTPUTS; i++)
+	{
+		if (i > 0)
+		{
+			result <<= 1;
+		}
+
+		for (int j = 0; j < KEYPAD_INPUTS; j++)
+		{
+			if (j > 0)
+			{
+				result <<= 1;
+			}
+
+			if (adc_values[i][j] > threshold)
+			{
+				result |= 1;
+			}
+		}
+	}
 
 	return result;
 }
