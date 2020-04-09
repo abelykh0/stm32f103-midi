@@ -3,17 +3,10 @@
 #include <stdint.h>
 #include "Sound/midiMessage.h"
 
-extern ADC_HandleTypeDef hadc1;
-
 static int firstNote = 53;
-
-#define KEYPAD_INPUTS 5
-#define KEYPAD_OUTPUTS 8
 
 static uint64_t keypadState = 0;
 static uint64_t previousKeypadState = 0;
-static volatile uint8_t adcReady;
-static volatile uint16_t adc[KEYPAD_INPUTS];
 
 uint64_t GetKeypadState();
 
@@ -23,7 +16,6 @@ void initialize()
 
 void setup()
 {
-	HAL_ADCEx_Calibration_Start(&hadc1);
 }
 
 void loop()
@@ -53,107 +45,187 @@ void loop()
 	}
 }
 
-void GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
+uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
-
-	// Using ADC because this keyboard have resistors
-	// for some reason
-	adcReady = 0;
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&adc, KEYPAD_INPUTS);
-    while (!adcReady)
-    {
-    	// wait
-    }
-
+	uint8_t result = GPIOA->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4); // A0,A1,A2,A3,A4
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
+
+	return result;
 }
 
-uint64_t GetKeypadState()
+uint64_t GetColumnState(GPIO_TypeDef* gpio, uint16_t pin)
 {
+	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
+	uint16_t resultA = GPIOA->IDR & (GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7);              // A5,A6,A7
+	uint16_t resultC = GPIOC->IDR & (GPIO_PIN_13);                                   // C13
+	uint16_t resultB = GPIOB->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11); // B0,B1,B10,B11
+	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
+
 	uint64_t result = 0;
 
-	uint16_t adc_values[KEYPAD_OUTPUTS][KEYPAD_INPUTS];
-
-	GetRowState(GPIOB, GPIO_PIN_11);
-	memcpy(&adc_values[0], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOB, GPIO_PIN_10);
-	memcpy(&adc_values[1], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOB, GPIO_PIN_1);
-	memcpy(&adc_values[2], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOB, GPIO_PIN_0);
-	memcpy(&adc_values[3], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOC, GPIO_PIN_13);
-	memcpy(&adc_values[4], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOA, GPIO_PIN_7);
-	memcpy(&adc_values[5], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOA, GPIO_PIN_6);
-	memcpy(&adc_values[6], (const void*)adc, sizeof(adc));
-
-	GetRowState(GPIOA, GPIO_PIN_5);
-	memcpy(&adc_values[7], (const void*)adc, sizeof(adc));
-
-	int threshold = 100;
-
-	// HACK For some reason when no buttons pressed I am not getting all zeroes
-	// as I am expecting. Apparently lack of knowledge of ADC.
-	for (int j = 0; j < KEYPAD_INPUTS; j++)
+	if (resultA & GPIO_PIN_5)
 	{
-		uint16_t minValue = 0xFFFF;
-		for (int i = 0; i < KEYPAD_OUTPUTS; i++)
-		{
-			if (adc_values[i][j] < minValue)
-			{
-				minValue = adc_values[i][j];
-			}
-		}
-
-		if (minValue > threshold)
-		{
-			for (int i = 0; i < KEYPAD_OUTPUTS; i++)
-			{
-				adc_values[i][j] = 0;
-			}
-		}
+		result |= 1;
 	}
-
-	for (int i = 0; i < KEYPAD_OUTPUTS; i++)
+	if (resultA & GPIO_PIN_6)
 	{
-		if (i > 0)
-		{
-			result <<= 1;
-		}
-
-		for (int j = 0; j < KEYPAD_INPUTS; j++)
-		{
-			if (j > 0)
-			{
-				result <<= 1;
-			}
-
-			if (adc_values[i][j] > threshold)
-			{
-				result |= 1;
-			}
-		}
+		result |= 1 << 5;
+	}
+	if (resultA & GPIO_PIN_7)
+	{
+		result |= 1 << 10;
+	}
+	if (resultC & GPIO_PIN_13)
+	{
+		result |= 1 << 15;
+	}
+	if (resultB & GPIO_PIN_0)
+	{
+		result |= 1 << 20;
+	}
+	if (resultB & GPIO_PIN_1)
+	{
+		result |= 1 << 25;
+	}
+	if (resultB & GPIO_PIN_10)
+	{
+		result |= 1 << 30;
+	}
+	if (resultB & GPIO_PIN_11)
+	{
+		result |= (uint64_t)1 << 35;
 	}
 
 	return result;
 }
 
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+uint64_t GetKeypadStateByRow()
 {
-    if(hadc->Instance == ADC1)
-    {
-        HAL_ADC_Stop_DMA(&hadc1);
-        //snprintf(trans_str, 63, "ADC %d %d\n", (uint16_t)adc[0], (uint16_t)adc[1]);
-        //HAL_UART_Transmit(&huart1, (uint8_t*)trans_str, strlen(trans_str), 1000);
-        adcReady = 1;
-    }
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	/*Configure GPIO pin : PC13 */
+	GPIO_InitStruct.Pin = GPIO_PIN_13;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : PA0 PA1 PA2 PA3
+						   PA4 */
+	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+						  |GPIO_PIN_4;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : PA5 PA6 PA7 */
+	GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : PB0 PB1 PB10 PB11 */
+	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	uint64_t result = 0;
+	uint8_t rowState;
+
+	rowState = GetRowState(GPIOB, GPIO_PIN_11);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOB, GPIO_PIN_10);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOB, GPIO_PIN_1);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOB, GPIO_PIN_0);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOC, GPIO_PIN_13);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOA, GPIO_PIN_7);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOA, GPIO_PIN_6);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOA, GPIO_PIN_5);
+	result |= rowState;
+
+	return result;
+}
+
+uint64_t GetKeypadStateByColumn()
+{
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	/*Configure GPIO pin : PC13 */
+	GPIO_InitStruct.Pin = GPIO_PIN_13;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : PA0 PA1 PA2 PA3
+						   PA4 */
+	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+						  |GPIO_PIN_4;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : PA5 PA6 PA7 */
+	GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : PB0 PB1 PB10 PB11 */
+	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	uint64_t result = 0;
+	uint64_t columnState;
+
+	columnState = GetColumnState(GPIOA, GPIO_PIN_0);
+	result |= columnState;
+
+	columnState = GetColumnState(GPIOA, GPIO_PIN_1);
+	result |= columnState << 1;
+
+	columnState = GetColumnState(GPIOA, GPIO_PIN_2);
+	result |= columnState << 2;
+
+	columnState = GetColumnState(GPIOA, GPIO_PIN_3);
+	result |= columnState << 3;
+
+	columnState = GetColumnState(GPIOA, GPIO_PIN_4);
+	result |= columnState << 4;
+
+	return result;
+}
+
+uint64_t GetKeypadState()
+{
+	uint64_t resultByRow = GetKeypadStateByRow();
+	uint64_t resultByColumn = GetKeypadStateByColumn();
+
+	return resultByRow | resultByColumn;
 }
