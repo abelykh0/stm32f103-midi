@@ -48,7 +48,27 @@ void loop()
 uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
-	uint8_t result = GPIOA->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4); // A0,A1,A2,A3,A4
+
+	uint8_t oldResult = 0;
+	uint8_t result = 0;
+	uint8_t sameResultCount = 5;
+	uint8_t allResultCount = 10;
+	while (sameResultCount > 0 && allResultCount > 0)
+	{
+		result = GPIOA->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4); // A0,A1,A2,A3,A4
+		if (oldResult == result)
+		{
+			sameResultCount--;
+		}
+		else
+		{
+			sameResultCount = 5;
+			oldResult = result;
+		}
+
+		allResultCount--;
+	}
+
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
 
 	return result;
@@ -57,45 +77,64 @@ uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 uint64_t GetColumnState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
-	uint16_t resultA = GPIOA->IDR & (GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7);              // A5,A6,A7
-	uint16_t resultC = GPIOC->IDR & (GPIO_PIN_13);                                   // C13
-	uint16_t resultB = GPIOB->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11); // B0,B1,B10,B11
-	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
 
+	uint64_t oldResult = 0;
 	uint64_t result = 0;
+	uint8_t sameResultCount = 5;
+	uint8_t allResultCount = 10;
+	while (sameResultCount > 0 && allResultCount > 0)
+	{
+		uint16_t resultA = GPIOA->IDR & (GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7);              // A5,A6,A7
+		uint16_t resultC = GPIOC->IDR & (GPIO_PIN_13);                                   // C13
+		uint16_t resultB = GPIOB->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11); // B0,B1,B10,B11
+		result = 0;
+		if (resultA & GPIO_PIN_5)
+		{
+			result |= 1;
+		}
+		if (resultA & GPIO_PIN_6)
+		{
+			result |= 1 << 5;
+		}
+		if (resultA & GPIO_PIN_7)
+		{
+			result |= 1 << 10;
+		}
+		if (resultC & GPIO_PIN_13)
+		{
+			result |= 1 << 15;
+		}
+		if (resultB & GPIO_PIN_0)
+		{
+			result |= 1 << 20;
+		}
+		if (resultB & GPIO_PIN_1)
+		{
+			result |= 1 << 25;
+		}
+		if (resultB & GPIO_PIN_10)
+		{
+			result |= 1 << 30;
+		}
+		if (resultB & GPIO_PIN_11)
+		{
+			result |= (uint64_t)1 << 35;
+		}
 
-	if (resultA & GPIO_PIN_5)
-	{
-		result |= 1;
+		if (oldResult == result)
+		{
+			sameResultCount--;
+		}
+		else
+		{
+			sameResultCount = 5;
+			oldResult = result;
+		}
+
+		allResultCount--;
 	}
-	if (resultA & GPIO_PIN_6)
-	{
-		result |= 1 << 5;
-	}
-	if (resultA & GPIO_PIN_7)
-	{
-		result |= 1 << 10;
-	}
-	if (resultC & GPIO_PIN_13)
-	{
-		result |= 1 << 15;
-	}
-	if (resultB & GPIO_PIN_0)
-	{
-		result |= 1 << 20;
-	}
-	if (resultB & GPIO_PIN_1)
-	{
-		result |= 1 << 25;
-	}
-	if (resultB & GPIO_PIN_10)
-	{
-		result |= 1 << 30;
-	}
-	if (resultB & GPIO_PIN_11)
-	{
-		result |= (uint64_t)1 << 35;
-	}
+
+	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
 
 	return result;
 }
