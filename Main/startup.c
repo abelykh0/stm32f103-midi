@@ -49,8 +49,8 @@ uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
 
-	uint16_t oldResult = 0;
-	uint16_t result = 0;
+	uint32_t oldResult = 0;
+	uint32_t result = 0;
 	uint8_t sameResultCount = 5;
 	uint8_t allResultCount = 10;
 	while (sameResultCount > 0 && allResultCount > 0)
@@ -71,6 +71,8 @@ uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
 
+	//result = __RBIT(result);
+
 	return (uint8_t)(result >> 4);
 }
 
@@ -82,11 +84,13 @@ uint64_t GetColumnState(GPIO_TypeDef* gpio, uint16_t pin)
 	uint64_t result = 0;
 	uint8_t sameResultCount = 5;
 	uint8_t allResultCount = 10;
+	uint32_t resultA;
+	uint32_t resultB;
 	while (sameResultCount > 0 && allResultCount > 0)
 	{
-		uint16_t resultA = GPIOA->IDR & (GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10); // A8,A9,A10
-		uint16_t resultB = GPIOB->IDR & (GPIO_PIN_9
-				|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_14);           // B9,B12,B13,B14,B15
+		resultA = GPIOA->IDR & (GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10); // A8,A9,A10
+		resultB = GPIOB->IDR & (GPIO_PIN_9
+				|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_14);  // B9,B12,B13,B14,B15
 		result = 0;
 		if (resultB & GPIO_PIN_9)
 		{
@@ -166,27 +170,7 @@ uint64_t GetKeypadStateByRow()
 	uint64_t result = 0;
 	uint8_t rowState;
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_9);
-	result |= rowState;
-	result <<= 5;
-
-	rowState = GetRowState(GPIOA, GPIO_PIN_10);
-	result |= rowState;
-	result <<= 5;
-
-	rowState = GetRowState(GPIOA, GPIO_PIN_9);
-	result |= rowState;
-	result <<= 5;
-
-	rowState = GetRowState(GPIOA, GPIO_PIN_8);
-	result |= rowState;
-	result <<= 5;
-
-	rowState = GetRowState(GPIOB, GPIO_PIN_15);
-	result |= rowState;
-	result <<= 5;
-
-	rowState = GetRowState(GPIOB, GPIO_PIN_14);
+	rowState = GetRowState(GPIOB, GPIO_PIN_12);
 	result |= rowState;
 	result <<= 5;
 
@@ -194,7 +178,27 @@ uint64_t GetKeypadStateByRow()
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_12);
+	rowState = GetRowState(GPIOB, GPIO_PIN_14);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOB, GPIO_PIN_15);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOA, GPIO_PIN_8);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOA, GPIO_PIN_9);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOA, GPIO_PIN_10);
+	result |= rowState;
+	result <<= 5;
+
+	rowState = GetRowState(GPIOB, GPIO_PIN_9);
 	result |= rowState;
 
 	return result;
