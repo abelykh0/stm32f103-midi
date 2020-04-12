@@ -49,13 +49,13 @@ uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 {
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_SET);
 
-	uint8_t oldResult = 0;
-	uint8_t result = 0;
+	uint16_t oldResult = 0;
+	uint16_t result = 0;
 	uint8_t sameResultCount = 5;
 	uint8_t allResultCount = 10;
 	while (sameResultCount > 0 && allResultCount > 0)
 	{
-		result = GPIOA->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4); // A0,A1,A2,A3,A4
+		result = GPIOB->IDR & (GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8); // B4,B5,B6,B7,B8
 		if (oldResult == result)
 		{
 			sameResultCount--;
@@ -71,7 +71,7 @@ uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
 
-	return result;
+	return (uint8_t)(result >> 4);
 }
 
 uint64_t GetColumnState(GPIO_TypeDef* gpio, uint16_t pin)
@@ -84,39 +84,39 @@ uint64_t GetColumnState(GPIO_TypeDef* gpio, uint16_t pin)
 	uint8_t allResultCount = 10;
 	while (sameResultCount > 0 && allResultCount > 0)
 	{
-		uint16_t resultA = GPIOA->IDR & (GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7);              // A5,A6,A7
-		uint16_t resultC = GPIOC->IDR & (GPIO_PIN_13);                                   // C13
-		uint16_t resultB = GPIOB->IDR & (GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11); // B0,B1,B10,B11
+		uint16_t resultA = GPIOA->IDR & (GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10); // A8,A9,A10
+		uint16_t resultB = GPIOB->IDR & (GPIO_PIN_9
+				|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_14);           // B9,B12,B13,B14,B15
 		result = 0;
-		if (resultA & GPIO_PIN_5)
+		if (resultB & GPIO_PIN_9)
 		{
 			result |= 1;
 		}
-		if (resultA & GPIO_PIN_6)
+		if (resultA & GPIO_PIN_10)
 		{
 			result |= 1 << 5;
 		}
-		if (resultA & GPIO_PIN_7)
+		if (resultA & GPIO_PIN_9)
 		{
 			result |= 1 << 10;
 		}
-		if (resultC & GPIO_PIN_13)
+		if (resultA & GPIO_PIN_8)
 		{
 			result |= 1 << 15;
 		}
-		if (resultB & GPIO_PIN_0)
+		if (resultB & GPIO_PIN_15)
 		{
 			result |= 1 << 20;
 		}
-		if (resultB & GPIO_PIN_1)
+		if (resultB & GPIO_PIN_14)
 		{
 			result |= 1 << 25;
 		}
-		if (resultB & GPIO_PIN_10)
+		if (resultB & GPIO_PIN_13)
 		{
 			result |= 1 << 30;
 		}
-		if (resultB & GPIO_PIN_11)
+		if (resultB & GPIO_PIN_12)
 		{
 			result |= (uint64_t)1 << 35;
 		}
@@ -143,67 +143,58 @@ uint64_t GetKeypadStateByRow()
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-	/*Configure GPIO pin : PC13 */
-	GPIO_InitStruct.Pin = GPIO_PIN_13;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-	/*Configure GPIO pins : PA0 PA1 PA2 PA3
-						   PA4 */
-	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-						  |GPIO_PIN_4;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	/*Configure GPIO pins : PA5 PA6 PA7 */
-	GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	/*Configure GPIO pins : PB0 PB1 PB10 PB11 */
-	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11;
+	/* Configure GPIO pins : PB9 PB12 PB13 PB14 PB15 */
+	GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+	/* Configure GPIO pins : PA8 PA9 PA10 */
+	GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/* Configure GPIO pins : PB4 PB5 PB6 PB7 PB8 */
+	GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 	uint64_t result = 0;
 	uint8_t rowState;
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_11);
+	rowState = GetRowState(GPIOB, GPIO_PIN_9);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_10);
+	rowState = GetRowState(GPIOA, GPIO_PIN_10);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_1);
+	rowState = GetRowState(GPIOA, GPIO_PIN_9);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOB, GPIO_PIN_0);
+	rowState = GetRowState(GPIOA, GPIO_PIN_8);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOC, GPIO_PIN_13);
+	rowState = GetRowState(GPIOB, GPIO_PIN_15);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOA, GPIO_PIN_7);
+	rowState = GetRowState(GPIOB, GPIO_PIN_14);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOA, GPIO_PIN_6);
+	rowState = GetRowState(GPIOB, GPIO_PIN_13);
 	result |= rowState;
 	result <<= 5;
 
-	rowState = GetRowState(GPIOA, GPIO_PIN_5);
+	rowState = GetRowState(GPIOB, GPIO_PIN_12);
 	result |= rowState;
 
 	return result;
@@ -213,49 +204,41 @@ uint64_t GetKeypadStateByColumn()
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-	/*Configure GPIO pin : PC13 */
-	GPIO_InitStruct.Pin = GPIO_PIN_13;
+	/* Configure GPIO pins : PB9 PB12 PB13 PB14 PB15 */
+	GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-	/*Configure GPIO pins : PA0 PA1 PA2 PA3
-						   PA4 */
-	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
-						  |GPIO_PIN_4;
+	/* Configure GPIO pins : PA8 PA9 PA10 */
+	GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/* Configure GPIO pins : PB4 PB5 PB6 PB7 PB8 */
+	GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	/*Configure GPIO pins : PA5 PA6 PA7 */
-	GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	/*Configure GPIO pins : PB0 PB1 PB10 PB11 */
-	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	uint64_t result = 0;
 	uint64_t columnState;
 
-	columnState = GetColumnState(GPIOA, GPIO_PIN_0);
+	columnState = GetColumnState(GPIOB, GPIO_PIN_4);
 	result |= columnState;
 
-	columnState = GetColumnState(GPIOA, GPIO_PIN_1);
+	columnState = GetColumnState(GPIOB, GPIO_PIN_5);
 	result |= columnState << 1;
 
-	columnState = GetColumnState(GPIOA, GPIO_PIN_2);
+	columnState = GetColumnState(GPIOB, GPIO_PIN_6);
 	result |= columnState << 2;
 
-	columnState = GetColumnState(GPIOA, GPIO_PIN_3);
+	columnState = GetColumnState(GPIOB, GPIO_PIN_7);
 	result |= columnState << 3;
 
-	columnState = GetColumnState(GPIOA, GPIO_PIN_4);
+	columnState = GetColumnState(GPIOB, GPIO_PIN_8);
 	result |= columnState << 4;
 
 	return result;
