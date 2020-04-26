@@ -1,5 +1,4 @@
-# stm32f103-midi
-MIDI keyboard made from a toy
+# MIDI keyboard made from a toy
 
 The goal of this project is to convert a toy piano from a local thrift store into a MIDI controller. 
 
