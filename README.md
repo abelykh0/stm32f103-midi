@@ -3,7 +3,7 @@ MIDI keyboard made from a toy
 
 The goal of this project is to convert a toy piano from a local thrift store into a MIDI controller. 
 
-I disassembled a toy piano and realized that the 37 button keyboard is a "matrix" of 5x8. There are some resistors in there too, but I am not using them.
+I disassembled a toy piano and realized that the 37 button keyboard is a "matrix" of 5x8. There are some resistors in there too, but I am not using them. Here is how I decided to connect the wires to the board:
 
 ![Pinout](https://raw.githubusercontent.com/abelykh0/stm32f103-midi/master/doc/Pinout.png)
 
