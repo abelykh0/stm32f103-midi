@@ -10,3 +10,15 @@ So, I had 2 things to implement: USB MIDI interface and a code that will read th
 Unfortunately, the toy keyboard doesn't have hardware to identify MIDI velocity, so it is not present.
 
 Current issue: doesn't work well sometimes if more than 3 buttons are pressed at the same time. To investigate.
+## Hardware
+
+| Hardware      |    Qty|
+| ------------- | -----:|
+| ["blue pill"](https://stm32-base.org/boards/STM32F103C8T6-Blue-Pill) STM32F103C8 board | 1
+| Toy piano | 1
+| Old IDE connector | 1
+| ST-Link v2 or clone | 1
+
+## Software
+
+[System Workbench for STM32](https://www.st.com/en/development-tools/sw4stm32.html/)
