@@ -36,7 +36,7 @@ void loop()
 				else
 				{
 					// note pressed
-					midiMessage(MIDI_NOTE_ON, 0, firstNote + note, 0x70);
+					midiMessage(MIDI_NOTE_ON, 0, firstNote + note, 100);
 				}
 			}
 		}
@@ -70,8 +70,6 @@ uint8_t GetRowState(GPIO_TypeDef* gpio, uint16_t pin)
 	}
 
 	HAL_GPIO_WritePin(gpio, pin, GPIO_PIN_RESET);
-
-	//result = __RBIT(result);
 
 	return (uint8_t)(result >> 4);
 }
