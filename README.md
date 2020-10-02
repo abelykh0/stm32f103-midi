@@ -10,7 +10,7 @@ I disassembled a toy piano and realized that the 37 button keyboard is a "matrix
 
 So, I had 2 things to implement: USB MIDI interface and a code that will read the keypad and convert the key presses and releases into notes.
 
-Unfortunately, the toy keyboard doesn't have hardware to identify MIDI velocity, so it is not present.
+Unfortunately, the toy keyboard doesn't have hardware to identify MIDI velocity, so it is harcoded to 100.
 
 Current issue: doesn't work well sometimes if more than 3 buttons are pressed at the same time. To investigate.
 
