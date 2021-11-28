@@ -25,4 +25,4 @@ Current issue: doesn't work well sometimes if more than 3 buttons are pressed at
 
 ## Software
 
-[System Workbench for STM32](https://www.st.com/en/development-tools/sw4stm32.html/)
+[STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html)
