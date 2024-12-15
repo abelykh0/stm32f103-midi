@@ -3,7 +3,7 @@
 #include "usbd_def.h"
 #include "usbd_core.h"
 
-PCD_HandleTypeDef hpcd_USB_FS;
+extern PCD_HandleTypeDef hpcd_USB_FS;
 void Error_Handler(void);
 
 USBD_StatusTypeDef USBD_Get_USB_Status(HAL_StatusTypeDef hal_status);
